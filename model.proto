@@ -56,11 +56,12 @@ message Instance {
   optional int32 version = 1 [default = 0];
 
   enum State {
-    PENDING = 1;
-    RUNNING = 2;
-    QUITTING = 3;
-    WAITING = 4;
-    FAILING = 5;
+    IDLE = 1;
+    PENDING_CLAIM = 2;
+    PENDING_START = 3;
+    RUNNING = 4;
+    QUIT = 5;
+    FAILED = 6;
   }
 
   optional State state = 2;

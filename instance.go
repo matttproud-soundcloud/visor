@@ -168,7 +168,7 @@ func RegisterInstance(app string, rev string, pty string, s Snapshot) (ins *Inst
 	}
 
 	state := &generated.Instance{
-		State:           generated.Instance_PENDING.Enum(),
+		State:           generated.Instance_IDLE.Enum(),
 		ApplicationName: proto.String(app),
 		RevisionName:    proto.String(rev),
 		ProcessName:     proto.String(pty),
@@ -334,7 +334,7 @@ func (i *Instance) started(ip string, port int, host string) {
 	i.Status = InsStatusRunning
 }
 
-func (i *Instance) claimed(ip string) {
+func (i *Instance) claim(ip string) {
 	i.Ip = ip
 	i.Status = InsStatusClaimed
 }
@@ -538,7 +538,7 @@ func (i *Instance) waitStartPath() (i1 *Instance, err error) {
 		}
 		i1.started(ip, port, host)
 	} else if len(fields) > 0 {
-		i1.claimed(fields[0])
+		i1.claim(fields[0])
 	} else {
 		// TODO
 	}
