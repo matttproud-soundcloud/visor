@@ -6,15 +6,22 @@
 package visor
 
 import (
+	"code.google.com/p/goprotobuf/proto"
+	"encoding/json"
 	"fmt"
 	"github.com/soundcloud/doozer"
+	"github.com/soundcloud/visor/generated"
 	"path"
 	"strconv"
 	"strings"
 )
 
+const (
+	pathInstanceRoot             = "instances"
+	pathInstanceEntityDefinition = "entity-definition"
+)
+
 const claimsPath = "claims"
-const instancesPath = "instances"
 const failedPath = "failed"
 const startPath = "start"
 const statusPath = "status"
@@ -41,6 +48,7 @@ type Instance struct {
 	Port         int
 	Host         string
 	Status       InsStatus
+	state        *generated.Instance
 }
 
 // GetInstance returns an Instance from the given id
@@ -100,16 +108,24 @@ func GetInstance(s Snapshot, id int64) (ins *Instance, err error) {
 	}
 	fields := f.Value.([]string)
 
-	ins = &Instance{
-		Id:           id,
-		AppName:      fields[0],
-		RevisionName: fields[1],
-		ProcessName:  fields[2],
-		Status:       status,
-		Ip:           ip,
-		Port:         port,
-		Host:         host,
-		Dir:          dir{s, instancePath(id)},
+	dir := dir{s, instancePath(id)}
+	state := &generated.Instance{}
+
+	if marshaled, _, err := dir.getBytes(pathRevisionEntityDefinition); err == nil {
+		if err = json.Unmarshal(marshaled, state); err == nil {
+			ins = &Instance{
+				Id:           id,
+				AppName:      fields[0],
+				RevisionName: fields[1],
+				ProcessName:  fields[2],
+				Status:       status,
+				Ip:           ip,
+				Port:         port,
+				Host:         host,
+				Dir:          dir,
+				state:        state,
+			}
+		}
 	}
 	return
 }
@@ -150,6 +166,14 @@ func RegisterInstance(app string, rev string, pty string, s Snapshot) (ins *Inst
 	if err != nil {
 		return
 	}
+
+	state := &generated.Instance{
+		State:           generated.Instance_PENDING.Enum(),
+		ApplicationName: proto.String(app),
+		RevisionName:    proto.String(rev),
+		ProcessName:     proto.String(pty),
+	}
+
 	ins = &Instance{
 		Id:           id,
 		AppName:      app,
@@ -157,8 +181,15 @@ func RegisterInstance(app string, rev string, pty string, s Snapshot) (ins *Inst
 		ProcessName:  pty,
 		Status:       InsStatusPending,
 		Dir:          dir{s, instancePath(id)},
+		state:        state,
 	}
 
+	_, err = createFile(s, ins.Dir.prefix(pathRevisionEntityDefinition), state, new(jsonCodec))
+	if err != nil {
+		return nil, err
+	}
+
+	// XXX: Migrated
 	_, err = createFile(s, ins.Dir.prefix("object"), ins.objectArray(), new(listCodec))
 	if err != nil {
 		return nil, err
@@ -167,11 +198,24 @@ func RegisterInstance(app string, rev string, pty string, s Snapshot) (ins *Inst
 	if err != nil {
 		return
 	}
+
+	// XXX: Migratd
 	s1, err := createFile(s, ins.Dir.prefix(startPath), "", new(stringCodec))
 	if err != nil {
 		return nil, err
 	}
 	ins = ins.FastForward(s1.Snapshot.Rev)
+	ins, err = ins.put()
+
+	return
+}
+
+func (i *Instance) put() (instance *Instance, err error) {
+	if marshaled, err := json.Marshal(i.state); err == nil {
+		if rev, err := i.Dir.setBytes(pathInstanceEntityDefinition, marshaled); err == nil {
+			instance = i.FastForward(rev)
+		}
+	}
 
 	return
 }
@@ -195,7 +239,7 @@ func StopInstance(id int64, s Snapshot) (s1 Snapshot, err error) {
 }
 
 func instancePath(id int64) string {
-	return path.Join(instancesPath, strconv.FormatInt(id, 10))
+	return path.Join(pathInstanceRoot, strconv.FormatInt(id, 10))
 }
 
 // FastForward advances the instance in time. It returns
@@ -408,7 +452,7 @@ func WatchInstanceStart(s Snapshot, listener chan *Instance, errors chan error) 
 	rev := s.Rev
 
 	for {
-		ev, err := s.conn.Wait(path.Join(instancesPath, "*", startPath), rev+1)
+		ev, err := s.conn.Wait(path.Join(pathInstanceRoot, "*", startPath), rev+1)
 		rev = ev.Rev
 
 		if !ev.IsSet() || string(ev.Body) != "" {
@@ -429,7 +473,7 @@ func WatchInstanceStart(s Snapshot, listener chan *Instance, errors chan error) 
 }
 
 func (i *Instance) WaitStop() (i1 *Instance, err error) {
-	p := path.Join(instancesPath, strconv.FormatInt(i.Id, 10), stopPath)
+	p := path.Join(pathInstanceRoot, strconv.FormatInt(i.Id, 10), stopPath)
 
 	ev, err := i.Dir.Snapshot.conn.Wait(p, i.Dir.Snapshot.Rev+1)
 	if err != nil {
@@ -441,7 +485,7 @@ func (i *Instance) WaitStop() (i1 *Instance, err error) {
 }
 
 func (i *Instance) WaitStatus() (i1 *Instance, err error) {
-	p := path.Join(instancesPath, strconv.FormatInt(i.Id, 10), statusPath)
+	p := path.Join(pathInstanceRoot, strconv.FormatInt(i.Id, 10), statusPath)
 	ev, err := i.Dir.Snapshot.conn.Wait(p, i.Dir.Snapshot.Rev+1)
 	if err != nil {
 		return
@@ -474,7 +518,7 @@ func (i *Instance) waitStartPathStatus(s InsStatus) (i1 *Instance, err error) {
 }
 
 func (i *Instance) waitStartPath() (i1 *Instance, err error) {
-	p := path.Join(instancesPath, strconv.FormatInt(i.Id, 10), startPath)
+	p := path.Join(pathInstanceRoot, strconv.FormatInt(i.Id, 10), startPath)
 
 	ev, err := i.Dir.Snapshot.conn.Wait(p, i.Dir.Snapshot.Rev+1)
 	if err != nil {
@@ -502,7 +546,7 @@ func (i *Instance) waitStartPath() (i1 *Instance, err error) {
 }
 
 func ptyInstancesPath(app, rev, pty string) string {
-	return path.Join(appsPath, app, procsPath, pty, instancesPath, rev)
+	return path.Join(appsPath, app, procsPath, pty, pathInstanceRoot, rev)
 }
 
 func (i *Instance) idString() string {
@@ -522,7 +566,7 @@ func (i *Instance) ptyFailedPath() string {
 }
 
 func (i *Instance) ptyInstancesPath() string {
-	return path.Join(appsPath, i.AppName, procsPath, i.ProcessName, instancesPath, i.RevisionName, i.idString())
+	return path.Join(appsPath, i.AppName, procsPath, i.ProcessName, pathInstanceRoot, i.RevisionName, i.idString())
 }
 
 func (i *Instance) claimPath(host string) string {
@@ -557,4 +601,20 @@ func (i *Instance) String() string {
 // IdString returns a string of the format "INSTANCE[id]"
 func (i *Instance) IdString() string {
 	return fmt.Sprintf("INSTANCE[%d]", i.Id)
+}
+
+func (i *Instance) Failures() int32 {
+	return *i.state.Failures
+}
+
+func (i *Instance) ResetFailures() (instance *Instance, err error) {
+	i.state.Failures = proto.Int32(0)
+
+	return i.put()
+}
+
+func (i *Instance) IncrementFailures() (instance *Instance, err error) {
+	i.state.Failures = proto.Int32((*i.state.Failures) + 1)
+
+	return i.put()
 }

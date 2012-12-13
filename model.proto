@@ -43,3 +43,34 @@ message Revision {
 
   optional int64 registration_timestamp = 4;
 }
+
+/*
+ * A Instance refers to a concrete UNIX process for a Application and ProcType
+ * pair.
+ */
+message Instance {
+
+  /*
+   * The version of this entity record's schema definition---not its values.
+   */
+  optional int32 version = 1 [default = 0];
+
+  enum State {
+    PENDING = 1;
+    RUNNING = 2;
+    QUITTING = 3;
+    WAITING = 4;
+    FAILING = 5;
+  }
+
+  optional State state = 2;
+
+  optional int32 limit_failures_allowed = 3 [default = 0];
+  optional int32 failures = 4 [default = 0];
+
+  optional string serving_address = 5;
+  optional int32 serving_port = 6;
+  optional string application_name = 7;
+  optional string revision_name = 8;
+  optional string process_name = 9;
+}

@@ -88,7 +88,7 @@ func (p *ProcType) Unregister() (err error) {
 }
 
 func (p *ProcType) instancesPath() string {
-	return p.Dir.prefix(instancesPath)
+	return p.Dir.prefix(pathInstanceRoot)
 }
 
 func (p *ProcType) failedInstancesPath() string {
