@@ -279,6 +279,8 @@ func (i *Instance) Claim(host string) (*Instance, error) {
 	// -         start  =
 	// +         start  = 10.0.0.1
 	//
+	i.state.State = generated.Instance_PENDING_START.Enum()
+
 	val, rev, err := i.Dir.get(startPath)
 	if err != nil {
 		return nil, err
@@ -297,7 +299,9 @@ func (i *Instance) Claim(host string) (*Instance, error) {
 	if err != nil {
 		return i, err
 	}
-	return i.FastForward(rev), err
+	instance := i.FastForward(rev)
+
+	return instance.put()
 }
 
 func (i *Instance) Unregister() (err error) {
@@ -339,7 +343,7 @@ func (i *Instance) claim(ip string) {
 	i.Status = InsStatusClaimed
 }
 
-func (i *Instance) Started(host string, port int, hostname string) (i1 *Instance, err error) {
+func (i *Instance) Start(host string, port int, hostname string) (i1 *Instance, err error) {
 	//
 	//   instances/
 	//       6868/

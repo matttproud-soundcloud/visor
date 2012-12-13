@@ -114,7 +114,7 @@ func TestProcTypeGetInstances(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		ins, err = ins.Started("10.0.0.1", 9999, appid+".org")
+		ins, err = ins.Start("10.0.0.1", 9999, appid+".org")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -151,7 +151,7 @@ func TestProcTypeGetFailedInstances(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		ins, err = ins.Started("10.0.0.1", 9999, appid+".org")
+		ins, err = ins.Start("10.0.0.1", 9999, appid+".org")
 		if err != nil {
 			t.Fatal(err)
 		}

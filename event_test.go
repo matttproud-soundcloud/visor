@@ -285,7 +285,7 @@ func TestEventInstanceStateChange(t *testing.T) {
 
 	go WatchEvent(s, l)
 
-	ins, err = ins.Started(ip, port, host)
+	ins, err = ins.Start(ip, port, host)
 	if err != nil {
 		t.Error(err)
 	}
