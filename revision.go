@@ -165,7 +165,7 @@ func (r *Revision) Propose() (revision *Revision, err error) {
 	return
 }
 
-func (r *Revision) Ratify(archiveUrl string) (revision *Revision, err error) {
+func (r *Revision) Accept(archiveUrl string) (revision *Revision, err error) {
 	if *r.state.State != generated.Revision_PROPOSED {
 		return nil, fmt.Errorf("Revision %s in state %s cannot be ratified", r, r.state.State)
 	}

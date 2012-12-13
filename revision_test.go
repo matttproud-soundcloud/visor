@@ -114,7 +114,7 @@ func TestRevisionRatify(t *testing.T) {
 		t.Errorf("Revision must be in state PROPOSED")
 	}
 
-	rev, err = rev.Ratify("path/to/artifact")
+	rev, err = rev.Accept("path/to/artifact")
 	if err != nil {
 		t.Error(err)
 	}

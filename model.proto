@@ -60,7 +60,7 @@ message Instance {
     PENDING_CLAIM = 2;
     PENDING_START = 3;
     RUNNING = 4;
-    QUIT = 5;
+    EXITED = 5;
     FAILED = 6;
   }
 

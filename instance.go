@@ -319,6 +319,7 @@ func (i *Instance) Unregister() (err error) {
 
 // Exited tells the coordinator that the instance has exited.
 func (i *Instance) Exited(host string) (i1 *Instance, err error) {
+	i.state.State = generated.Instance_EXITED.Enum()
 	if err = i.verifyClaimer(host); err != nil {
 		return
 	}

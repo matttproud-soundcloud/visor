@@ -146,7 +146,7 @@ func TestSnapshotGetScale(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	rev, err = rev.Ratify("/path/to/artifact")
+	rev, err = rev.Accept("/path/to/artifact")
 	if err != nil {
 		panic(err)
 	}
