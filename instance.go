@@ -327,7 +327,7 @@ func (i *Instance) Exited(host string) (i1 *Instance, err error) {
 	return
 }
 
-func (i *Instance) started(ip string, port int, host string) {
+func (i *Instance) start(ip string, port int, host string) {
 	i.Ip = ip
 	i.Port = port
 	i.Host = host
@@ -354,7 +354,7 @@ func (i *Instance) Started(host string, port int, hostname string) (i1 *Instance
 		return
 	}
 	i1 = i.FastForward(i.Dir.Snapshot.Rev) // Create a copy
-	i1.started(host, port, hostname)
+	i1.start(host, port, hostname)
 
 	f, err := createFile(i1.Dir.Snapshot, i1.Dir.prefix(startPath), i1.startArray(), new(listCodec))
 	if err != nil {
@@ -536,7 +536,7 @@ func (i *Instance) waitStartPath() (i1 *Instance, err error) {
 		if err != nil {
 			return i, err
 		}
-		i1.started(ip, port, host)
+		i1.start(ip, port, host)
 	} else if len(fields) > 0 {
 		i1.claim(fields[0])
 	} else {
